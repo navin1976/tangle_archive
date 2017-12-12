@@ -4,7 +4,7 @@ from models.base import Base
 
 
 class TransactionModel(Base):
-   # __table_name__ = "transactions"
+    __table_name__ = "transactions"
    # __keyspace__ = "snapshots"
     hash = columns.Text(primary_key=True);
     signature_message_fragment = columns.Text()
