@@ -36,7 +36,7 @@ class transaction():
 
         request={'changeAddress':"", #optional 
             'depth':3,
-            'inputs':None, #because it is optiona;
+            'inputs':None,          #it is optional
             'minWeightMagnitude':18,
             'seed':"ZCTFPRYGEAC9MGFLYLOQVGZBHDLEULMZKIXRAZPPJCAJPANAUSL9BVVAPZSVYLLWNPEYKZQEVO9A9YYP",
             'transfers':transfer_list
