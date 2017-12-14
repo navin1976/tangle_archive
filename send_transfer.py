@@ -14,7 +14,7 @@ app = Flask(__name__)
 def send_transfers():
         
 
-        transfer1 =\
+        transfer =\
             ProposedTransaction(
                 address =
                 Address(
@@ -25,22 +25,12 @@ def send_transfers():
                 value = 30,
             )
 
-        transfer2 =\
-            ProposedTransaction(
-                address =
-                Address(
-                    b'TESTVALUESIX9DONTUSEINPRODUCTION99999GGT'
-                    b'FODSHHELBDERDCDRBCINDCGQEI9NAWDJBC9TGPFME'
-                ),
-
-                value = 40,
-            )
-        transfer_list=[transfer1,transfer2]
-        
+        transfer_list=[transfer]
+    
 
         request={'changeAddress':"", #optional 
             'depth':3,
-            'inputs':None,           #because it is optional
+            'inputs':None,          #it is optional
             'minWeightMagnitude':18,
             'seed':"ZCTFPRYGEAC9MGFLYLOQVGZBHDLEULMZKIXRAZPPJCAJPANAUSL9BVVAPZSVYLLWNPEYKZQEVO9A9YYP",
             'transfers':transfer_list
