@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify
 
 from models.BundleHashModel import BundleHashModel
 from models.AddressModel import AddressModel
+from models.TagModel import TagModel
 from models.Transactions import TransactionModel
 from cassandra.cqlengine.query import DoesNotExist
 from cassandra.cqlengine.query import MultipleObjectsReturned
@@ -101,3 +102,8 @@ def getAddressInfo(addressInput):
 def getBundle(bundle_hash_input):
     result = BundleHashModel.objects(bundle_hash=bundle_hash_input)
     return jsonify([res.get_bundle_data() for res in result])
+
+@api.route("/tag/<string:tag_input>")
+def getTag(tag_input):
+    result = TagModel.objects(tag=tag_input)
+    return jsonify([res.get_tag_data() for res in result])
