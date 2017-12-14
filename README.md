@@ -3,4 +3,8 @@
 #### Local Cassandra API Setup
 
 * keyspace name = snapshots
-* table name = transactions
+
+#### Tables
+* transactions
+* address_table
+* bundle_hash_table
