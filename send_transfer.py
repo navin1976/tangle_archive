@@ -40,7 +40,7 @@ def send_transfers():
 
         request={'changeAddress':"", #optional 
             'depth':3,
-            'inputs':None, #because it is optiona;
+            'inputs':None,           #because it is optional
             'minWeightMagnitude':18,
             'seed':"ZCTFPRYGEAC9MGFLYLOQVGZBHDLEULMZKIXRAZPPJCAJPANAUSL9BVVAPZSVYLLWNPEYKZQEVO9A9YYP",
             'transfers':transfer_list
