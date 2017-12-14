@@ -8,3 +8,4 @@
 * transactions
 * address_table
 * bundle_hash_table
+* tag_table
