@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify
 
+from models.BundleHashModel import BundleHashModel
 from models.AddressModel import AddressModel
 from models.Transactions import TransactionModel
 from cassandra.cqlengine.query import DoesNotExist
@@ -33,11 +34,10 @@ def hashExists(hashInput):
 @api.route("/transactions-by-address/<string:addressInput>")
 def getTransactionByAddress(addressInput):
     result = AddressModel.objects(address=addressInput)
-    print "Total Transactions :" , result.count()
     return jsonify([res.get_address_data() for res in result])
 
 @api.route("/address-info/<string:addressInput>")
-def isAddressSpentFrom(addressInput):
+def getAddressInfo(addressInput):
     isSpentFrom = isReceivedOnly = addressExists = False
 
     #Check if Address exists or not
@@ -97,3 +97,7 @@ def isAddressSpentFrom(addressInput):
                         "is_received_only" : isReceivedOnly
                 })
 
+@api.route("/bundle/<string:bundle_hash_input>")
+def getBundle(bundle_hash_input):
+    result = BundleHashModel.objects(bundle_hash=bundle_hash_input)
+    return jsonify([res.get_bundle_data() for res in result])
