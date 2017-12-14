@@ -4,11 +4,11 @@ from models.base import Base
 
 
 class AddressModel(Base):
-    __table_name__ = "search_by_address"
+    __table_name__ = "address_table"
     address = columns.Text(primary_key=True)
-    timestamp_int = columns.Integer(primary_key=True, clustering_order="DESC")
+    value = columns.BigInt(primary_key=True)
+    timestamp_int = columns.Integer(primary_key=True)
     hash = columns.Text(primary_key=True)
-    value = columns.BigInt()
 
     def get_address_data(self):
         return {
