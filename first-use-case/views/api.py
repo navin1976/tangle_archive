@@ -1,11 +1,13 @@
+from cassandra import cqlengine
 from flask import Blueprint, jsonify
 
 from models.BundleHashModel import BundleHashModel
 from models.AddressModel import AddressModel
 from models.TagModel import TagModel
 from models.Transactions import TransactionModel
-from cassandra.cqlengine.query import DoesNotExist
+from cassandra.cqlengine.query import DoesNotExist, BatchQuery
 from cassandra.cqlengine.query import MultipleObjectsReturned
+
 
 api = Blueprint("api", __name__)
 
@@ -24,17 +26,17 @@ def hashExists(hashInput):
     else:
         return jsonify({"exists": "false" , "count":result.count()})
 
-# @api.route("/address-exists/<string:addressInput>")
-# def addressExists(addressInput):
-#     result = AddressModel.objects(address=addressInput)
-#     if result.count() > 0:
-#         return jsonify({"exists": "true", "count":result.count()})
-#     else:
-#         return jsonify({"exists": "false" , "count":result.count()})
+@api.route("/address-count/<string:addressInput>")
+def addressExists(addressInput):
+    with BatchQuery() as b:
+        result = AddressModel.batch(b).objects(address=addressInput).limit(1)
+    return jsonify({"count":result.count()})
+
 
 @api.route("/transactions-by-address/<string:addressInput>")
 def getTransactionByAddress(addressInput):
-    result = AddressModel.objects(address=addressInput)
+    result = AddressModel.objects(address=addressInput).limit(10)
+    #Need paging here to get it optimized...
     return jsonify([res.get_address_data() for res in result])
 
 @api.route("/address-info/<string:addressInput>")
@@ -107,3 +109,20 @@ def getBundle(bundle_hash_input):
 def getTag(tag_input):
     result = TagModel.objects(tag=tag_input)
     return jsonify([res.get_tag_data() for res in result])
+
+@api.route("/distinct/address/")
+def get_distinct_addresses():
+    result = AddressModel.objects().distinct()
+    return jsonify({"count": result.count()} )
+
+
+@api.route("/token-received-by-address/<string:addressInput>")
+def get_sum(addressInput):
+    sum = 0
+    result = AddressModel.objects(address=addressInput).limit(None)
+    for res in result:
+        value = res.get_address_data()["value"]
+        print "Value : " , value
+        if int(value) > 0:
+            sum += int(value)
+    return jsonify({"sum" : sum})
