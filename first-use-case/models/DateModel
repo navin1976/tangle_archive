@@ -1,0 +1,15 @@
+from cassandra.cqlengine import columns
+
+from models.base import Base
+
+
+class DateModel(Base):
+    __table_name__ = "date_table"
+    date = columns.Text(primary_key=True)
+    count = columns.Counter()
+
+    def get_date_count(self):
+        return {
+            "date": self.date,
+            "Number of transections": str(self.count)
+        }
