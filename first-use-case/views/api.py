@@ -126,3 +126,9 @@ def get_sum(addressInput):
         if int(value) > 0:
             sum += int(value)
     return jsonify({"sum" : sum})
+    
+
+@api.route("/date-count/<string:dateinput>")
+def date_search(dateinput):
+    result = DateModel.objects(date=dateinput)
+    return jsonify([ res.get_date_count() for res in result])
