@@ -5,9 +5,10 @@ from models.BundleHashModel import BundleHashModel
 from models.AddressModel import AddressModel
 from models.TagModel import TagModel
 from models.Transactions import TransactionModel
+from models.AddressTokenReceivedModel import AddressTokenReceivedModel
 from cassandra.cqlengine.query import DoesNotExist, BatchQuery
 from cassandra.cqlengine.query import MultipleObjectsReturned
-
+from models.DateModel import DateModel
 
 api = Blueprint("api", __name__)
 
@@ -118,17 +119,10 @@ def get_distinct_addresses():
 
 @api.route("/token-received-by-address/<string:addressInput>")
 def get_sum(addressInput):
-    sum = 0
-    result = AddressModel.objects(address=addressInput).limit(None)
-    for res in result:
-        value = res.get_address_data()["value"]
-        print "Value : " , value
-        if int(value) > 0:
-            sum += int(value)
-    return jsonify({"sum" : sum})
-    
+    result = AddressTokenReceivedModel.objects(address=addressInput)
+    return jsonify([res.get_data() for res in result])
 
-@api.route("/date-count/<string:dateinput>")
+@api.route("/date-transactions-count/<string:dateinput>")
 def date_search(dateinput):
     result = DateModel.objects(date=dateinput)
-    return jsonify([ res.get_date_count() for res in result])
+    return jsonify( res.get_date_count() for res in result)
