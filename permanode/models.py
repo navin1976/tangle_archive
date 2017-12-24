@@ -4,11 +4,11 @@ from permanode import db
 
 class Base(db.Model):
     __abstract__ = True
-    __keyspace__ = "snapshots"
+    __keyspace__ = "snapshotsdb"
 
 
 class AddressModel(Base):
-    __table_name__ = "address_table"
+    __table_name__ = "table_address_info"
     address = columns.Text(primary_key=True)
     value = columns.BigInt(primary_key=True)
     timestamp_int = columns.Integer(primary_key=True)
@@ -35,7 +35,7 @@ class AddressTokenReceivedModel(Base):
 
 
 class BundleHashModel(Base):
-    __table_name__ = "bundle_hash_table"
+    __table_name__ = "table_bundle_search"
     bundle_hash = columns.Text(primary_key=True)
     hash = columns.Text(primary_key=True);
     address = columns.Text(index=True)
@@ -57,8 +57,9 @@ class BundleHashModel(Base):
 
 
 class TagModel(Base):
-    __table_name__ = "tag_table"
+    __table_name__ = "table_tag_search"
     tag = columns.Text(primary_key=True)
+    timestamp_int=columns.Integer(primary_key=True, clustering_order='DESC')
     address = columns.Text(primary_key=True)
     hash = columns.Text(primary_key=True)
     tagIndex = columns.BigInt()
@@ -106,4 +107,19 @@ class TransactionModel(Base):
             "branch_transaction_hash": self.branch_transaction_hash,
             "nonce": self.nonce
         }
+
+class valueModel(Base):
+    __table_name__ = "table_values_count"
+    __keyspace__ = "snapshotsdb"
+    lookup_value = columns.Text(primary_key=True)
+    total_tokens=columns.Counter()
+    total_count =columns.Counter()
+
+
+    def get_value_data(self):
+        return {
+            "lookup_value": self.lookup_value,
+            "total_count": self.total_count,
+            "total_tokens": self.total_tokens
+        }  
 
