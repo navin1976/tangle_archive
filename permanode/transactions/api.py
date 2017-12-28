@@ -20,6 +20,14 @@ def verify_transaction_existence(transaction_hash):
 
     return jsonify({'exists': False})
 
+@transactions.route('/transactions/hash/<transaction_hash>', methods=['GET'])
+def fetch_transactions_by_hash(transaction_hash):
+    result = TransactionModel.objects(hash=transaction_hash).limit(10)
+
+    if result.count():
+        return result
+    else:
+        return None
 
 @transactions.route('/transactions/<bundle>', methods=['GET'])
 def find_transactions(bundle):

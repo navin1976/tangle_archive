@@ -3,6 +3,7 @@ from iota import Address, Bundle, Transaction, TryteString, Tag
 from permanode.search import search
 from permanode.shared.iota_api import IotaApi
 
+from permanode.transactions import api as lookup_api
 
 @search.route('/<search_string>', methods=['GET'])
 def fetch_associated_info(search_string):
@@ -10,6 +11,7 @@ def fetch_associated_info(search_string):
         abort(400)
 
     api = IotaApi()
+
 
     if len(search_string) <= 27:
         tags, tags_status_code = api.find_transactions(tags=[search_string])
@@ -72,56 +74,71 @@ def fetch_associated_info(search_string):
         })
 
     if len(search_string) == 81 and search_string.endswith('999'):
-        transaction_trytes, transaction_trytes_status_code = api.get_trytes([search_string])
 
-        if transaction_trytes_status_code == 503 or transaction_trytes_status_code == 400:
-            abort(transaction_trytes_status_code)
-        elif transaction_trytes_status_code == 200:
-            if not transaction_trytes['trytes']:
+        # First looking for a result in database...
+        result = lookup_api.fetch_transactions_by_hash(search_string)
+
+        if result is not None:
+            return jsonify({
+                'type': 'transaction',
+                'payload': [res.get_transaction_data() for res in result]
+            })
+        else:
+
+            transaction_trytes, transaction_trytes_status_code = api.get_trytes([search_string])
+
+            if transaction_trytes_status_code == 503 or transaction_trytes_status_code == 400:
+
+
+
+                abort(transaction_trytes_status_code)
+
+            elif transaction_trytes_status_code == 200:
+                if not transaction_trytes['trytes']:
+                    return jsonify({
+                        'type': 'transaction',
+                        'payload': []
+                    })
+
+                all_transaction_objects = []
+                for tryte in transaction_trytes['trytes']:
+                    transaction_inst = Transaction.from_tryte_string(tryte)
+                    all_transaction_objects.append(transaction_inst.as_json_compatible())
+
                 return jsonify({
                     'type': 'transaction',
-                    'payload': []
+                    'payload': all_transaction_objects
                 })
-
-            all_transaction_objects = []
-            for tryte in transaction_trytes['trytes']:
-                transaction_inst = Transaction.from_tryte_string(tryte)
-                all_transaction_objects.append(transaction_inst.as_json_compatible())
 
             return jsonify({
                 'type': 'transaction',
-                'payload': all_transaction_objects
+                'payload': []
             })
 
-        return jsonify({
-            'type': 'transaction',
-            'payload': []
-        })
+        if len(search_string) == 81 and not search_string.endswith('999'):
+            bundles, bundles_status_code = api.find_transactions(bundles=[search_string])
 
-    if len(search_string) == 81 and not search_string.endswith('999'):
-        bundles, bundles_status_code = api.find_transactions(bundles=[search_string])
+            if bundles_status_code == 503 or bundles_status_code == 400:
+                abort(bundles_status_code)
+            elif bundles_status_code == 200:
+                if not bundles['hashes']:
+                    return jsonify({
+                        'type': 'bundle',
+                        'payload': []
+                    })
 
-        if bundles_status_code == 503 or bundles_status_code == 400:
-            abort(bundles_status_code)
-        elif bundles_status_code == 200:
-            if not bundles['hashes']:
+                transaction_trytes, transaction_trytes_status_code = api.get_trytes(bundles['hashes'])
+
+                bundle_inst = Bundle.from_tryte_strings(transaction_trytes['trytes'])
+
                 return jsonify({
                     'type': 'bundle',
-                    'payload': []
+                    'payload': bundle_inst.as_json_compatible()
                 })
-
-            transaction_trytes, transaction_trytes_status_code = api.get_trytes(bundles['hashes'])
-
-            bundle_inst = Bundle.from_tryte_strings(transaction_trytes['trytes'])
 
             return jsonify({
                 'type': 'bundle',
-                'payload': bundle_inst.as_json_compatible()
+                'payload': []
             })
 
-        return jsonify({
-            'type': 'bundle',
-            'payload': []
-        })
-
-    abort(404)
+        abort(404)
