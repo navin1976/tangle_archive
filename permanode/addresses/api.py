@@ -2,15 +2,12 @@ from flask import jsonify, abort
 from cassandra.cqlengine.query import DoesNotExist, BatchQuery
 from cassandra.cqlengine.query import MultipleObjectsReturned
 from permanode.addresses import addresses
-from permanode.shared.payload_validator import validate_payload
-from permanode.addresses.schema import address_validation_schema
-from permanode.models import AddressModel
-from permanode.models import AddressTokenReceivedModel
+from permanode.models import AddressModel,AddressTokenReceivedModel
+
 
 @addresses.route('/addresses/<address>', methods=['GET'])
-# @validate_payload(address_validation_schema)
 def validate_address_usage(address):
-    return jsonify({'is_used': True})
+    return jsonify({ 'is_spent': True, 'address': address })
 
 
 @addresses.route('/addresses/spent/<address>') # TODO: Sort out route names
@@ -40,7 +37,8 @@ def fetch_unique_addresses():
     result = AddressModel.objects().distinct()
     return jsonify({'addresses': result.count()})
 
-@addresses.route("/token-received-by-address/<string:addressInput>")
-def get_sum(addressInput):
+@addresses.route("/addresses/tokenReceived/<string:addressInput>")
+def fetch_tokans_received_by_address(addressInput):
     result = AddressTokenReceivedModel.objects(address=addressInput)
-    return jsonify([res.get_data() for res in result])
+    return jsonify([res.get_transaction_token_received_data() for res in result])
+

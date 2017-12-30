@@ -28,7 +28,7 @@ class AddressTokenReceivedModel(Base):
     address = columns.Text(primary_key=True)
     total_tokens_received = columns.Counter()
 
-    def get_data(self):
+    def get_transaction_token_received_data(self):
         return {
             "total_tokens_received": self.total_tokens_received
         }
@@ -37,7 +37,7 @@ class AddressTokenReceivedModel(Base):
 class BundleHashModel(Base):
     __table_name__ = "table_bundle_search"
     bundle_hash = columns.Text(primary_key=True)
-    hash = columns.Text(primary_key=True);
+    hash = columns.Text(primary_key=True)
     address = columns.Text(index=True)
     value = columns.BigInt()
     current_index = columns.Integer()
@@ -67,11 +67,18 @@ class TagModel(Base):
 
     def get_tag_data(self):
         return {
+            "tag": self.tag,
+            "address":self.address,
+            "timestamp_int": self.timestamp_int,
             "hash": self.hash,
-            "signature_message_format": self.signature_message_fragment,
-            "address": self.address,
-            "tag": str(self.tag),
-            "tagIndex": str(self.tagIndex)
+            "tag_index": self.tagIndex,
+            "signature_massage_fragment": self.signature_message_fragment
+            # tag = trans.tag,
+            # timestamp_int=trans.timestamp,
+            # address = trans.address,
+            # hash = trans.hash,
+            # tagIndex = trans.tagIndex,
+            # signature_message_fragment = trans.signature_message_fragment
         }
 
 
@@ -107,19 +114,14 @@ class TransactionModel(Base):
             "branch_transaction_hash": self.branch_transaction_hash,
             "nonce": self.nonce
         }
+class TransactionApproveeModel(Base):
+    __table_name__ = "table_transaction_approvee"
+    hash = columns.Text(primary_key=True)
+    approvee_hash = columns.Text(primary_key=True)
 
-class valueModel(Base):
-    __table_name__ = "table_values_count"
-    __keyspace__ = "snapshotsdb"
-    lookup_value = columns.Text(primary_key=True)
-    total_tokens=columns.Counter()
-    total_count =columns.Counter()
-
-
-    def get_value_data(self):
+    def get_transaction_approvee_data(self):
         return {
-            "lookup_value": self.lookup_value,
-            "total_count": self.total_count,
-            "total_tokens": self.total_tokens
-        }  
+            "hash": self.hash,
+            "approvee_hash":self.approvee_hash
+        }
 
