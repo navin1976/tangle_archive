@@ -35,6 +35,7 @@ class TransactionModel(Base):
     trunk_transaction_hash = columns.Text()
     branch_transaction_hash = columns.Text()
     nonce = columns.Text()
+    min_weight_magnitude = columns.Integer()
 
     def as_json(self):
         return {
@@ -52,7 +53,8 @@ class TransactionModel(Base):
             "trunk_transaction_hash": self.trunk_transaction_hash,
             "branch_transaction_hash": self.branch_transaction_hash,
             "nonce": self.nonce,
-            "persistence": True  # since all txs from db are confirmed
+            "persistence": True,  # since all txs from db are confirmed
+            "min_weight_magnitude": self.min_weight_magnitude
         }
 
 
