@@ -1,5 +1,7 @@
-from iota import Address, Bundle, Transaction, TransactionHash, TryteString, Tag
-from permanode.models import AddressModel, TransactionModel, BundleHashModel, TagModel, TransactionHashModel
+from iota import Address, Bundle, Transaction, TransactionHash, TryteString, \
+    Tag
+from permanode.models import AddressModel, TransactionModel, BundleHashModel, \
+    TagModel, TransactionHashModel
 from permanode.shared.iota_api import IotaApi
 
 
@@ -17,7 +19,7 @@ def transform_with_persistence(all_txs, states):
     for index, tx in enumerate(all_txs_clone):
         tx['persistence'] = states[index]
         tx['address'] = tx['address'].address
-
+        tx['minWeightMagnitude'] = trailing_zeros(tx['hash_'])
         for prop in irrelevant_props:
             # safe to mutate
             del tx[prop]
@@ -37,6 +39,18 @@ def has_all_digits(trytes):
         return trytes[0].isdigit()
     except IndexError:
         return False
+
+
+def trailing_zeros(trytes):
+    trytes = TryteString(trytes)
+    trits = trytes.as_trits()
+    n = len(trits) - 1
+    z = 0
+    for i in range(0, n):
+        if trits[n - i] == 0:
+            z += 1
+        else:
+            return z
 
 
 class Search:
@@ -73,7 +87,6 @@ class Search:
 
             for tryte in transaction_trytes['trytes']:
                 transaction_inst = Transaction.from_tryte_string(tryte)
-
                 all_transaction_objects.append(transaction_inst.as_json_compatible())
 
             hashes = [tx['hash_'] for tx in all_transaction_objects]
