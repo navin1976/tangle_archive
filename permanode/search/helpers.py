@@ -50,7 +50,8 @@ def trailing_zeros(trytes):
         if trits[n - i] == 0:
             z += 1
         else:
-            return z
+            break
+    return z
 
 
 class Search:
