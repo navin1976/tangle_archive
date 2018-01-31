@@ -4,8 +4,7 @@ from permanode.models import AddressModel,\
     TransactionHashModel, TrunkTransactionHashModel,\
     BranchTransactionHashModel
 from permanode.shared.iota_api import IotaApi
-
-
+from threading import Thread
 def transform_with_persistence(all_txs, states):
     if not all_txs or not states or len(all_txs) != len(states):
         return all_txs
@@ -72,7 +71,7 @@ class Search:
         self.api = IotaApi()
 
     @staticmethod
-    def grab_txs_for_address_from_db(address):
+    def grab_txs_for_address_from_db(address,output):
         addresses_ref = AddressModel.objects.filter(address=address)
         addresses_obj = [res.as_json() for res in addresses_ref]
 
@@ -83,7 +82,7 @@ class Search:
             id__in=[addr['id'] for addr in addresses_obj]
         )
 
-        return [res.as_json() for res in txs]
+        output['db_result'] = [res.as_json() for res in txs]
 
     @staticmethod
     def grab_txs_for_tag_from_db(tag):
@@ -106,8 +105,12 @@ class Search:
 
         all_db_transaction_objects = []
         balance = 0
-
-        txs = Search.grab_txs_for_address_from_db(address_without_checksum)
+        output={}
+        db_thread=Thread(target=Search.grab_txs_for_address_from_db, args=(address_without_checksum, output))
+        db_thread.start()
+        db_thread.join()
+        txs=output["db_result"]
+        # txs = Search.grab_txs_for_address_from_db(address_without_checksum)
 
         for tx in txs:
             all_db_transaction_objects.append(tx)
@@ -117,9 +120,19 @@ class Search:
 
         '''
 
-        latest_balances, balance_status_code = self.api.get_balances(
-            [address_without_checksum]
-        )
+        latest_balances_output = {}
+        balance_status_code_output = {}
+
+        thread_api_balance =Thread(target=self.api.get_balances,
+                                              args=( latest_balances_output,
+                                                    balance_status_code_output,[address_without_checksum]
+                                                    ))
+
+        thread_api_balance.start()
+        thread_api_balance.join()
+
+        latest_balances= latest_balances_output["api_latest_output"]
+        balance_status_code= balance_status_code_output["api_balance_status_code_output"]
 
         if has_network_error(balance_status_code):
             return None
@@ -373,7 +386,6 @@ class Search:
         all_db_transaction_objects = []
 
         txs = Search.grab_txs_for_tag_from_db(full_length_tag)
-
         for tx in txs:
             all_db_transaction_objects.append(tx)
 

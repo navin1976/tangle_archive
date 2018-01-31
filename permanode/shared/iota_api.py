@@ -14,7 +14,7 @@ class IotaApi:
         self.url = 'http://148.251.181.105:14265/'
         self.command = None
 
-    def _make_request(self):
+    def _make_request(self, latest_balance_output,balance_status_code_output ):
         res = HttpRequest(
                 self.method,
                 self.url,
@@ -23,9 +23,9 @@ class IotaApi:
             )
 
         if res is None:
-            return None, 503
+            latest_balance_output['api_latest_balance'], balance_status_code_output['api_balance_status_code']=  None, 503
 
-        return res.response, res.status_code
+        latest_balance_output['api_latest_balance'], balance_status_code_output['api_balance_status_code'] = res.response, res.status_code
 
     def get_node_info(self):
         self.command = {
@@ -128,7 +128,8 @@ class IotaApi:
 
         return self._make_request()
 
-    def get_balances(self, addresses, threshold=100):
+    def get_balances(self, latest_balance_output,balance_status_code_output, addresses, threshold=100):
+
         self.command = {
             'command': 'getBalances',
             'addresses': addresses,
@@ -137,7 +138,9 @@ class IotaApi:
 
         self.method = 'GET'
 
-        return self._make_request()
+        latest_balance_output['api_latest_balance'], balance_status_code_output['api_balance_status_code'] = self._make_request(latest_balance_output,balance_status_code_output)
+
+
 
     def get_transactions_to_approve(self, depth):
         self.command = {
