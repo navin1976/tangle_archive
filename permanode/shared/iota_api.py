@@ -25,7 +25,7 @@ class IotaApi:
         if res is None:
             result['api_output']= None
             result['api_status_code']= 503
-
+        
         result['api_output'] = res.response
         result['api_status_code'] = res.status_code
 
@@ -78,8 +78,8 @@ class IotaApi:
         return self._make_request()
 
     def find_transactions(
-            result,
             self,
+            result,
             addresses=None,
             bundles=None,
             tags=None,
