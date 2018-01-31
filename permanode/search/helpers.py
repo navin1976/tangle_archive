@@ -120,19 +120,16 @@ class Search:
 
         '''
 
-        latest_balances_output = {}
-        balance_status_code_output = {}
+        result = {}
 
-        thread_api_balance =Thread(target=self.api.get_balances,
-                                              args=( latest_balances_output,
-                                                    balance_status_code_output,[address_without_checksum]
-                                                    ))
+
+        thread_api_balance =Thread(target=self.api.get_balances,args=(result, [address_without_checksum], ))
 
         thread_api_balance.start()
         thread_api_balance.join()
 
-        latest_balances= latest_balances_output["api_latest_output"]
-        balance_status_code= balance_status_code_output["api_balance_status_code_output"]
+        latest_balances= result["api_output"]
+        balance_status_code= result["api_status_code"]
 
         if has_network_error(balance_status_code):
             return None
@@ -145,9 +142,19 @@ class Search:
 
         '''
 
-        addresses, addresses_status_code = self.api.find_transactions(
-            addresses=[address_without_checksum]
-        )
+
+        result_1 = {}
+
+        thread_api_address =Thread(target=self.api.find_transactions, args=(result_1,[address_without_checksum],))
+
+        thread_api_address.start()
+        thread_api_address.join()
+
+        addresses= result_1['api_output']
+        addresses_status_code= result_1['api_status_code']
+
+
+
 
         if has_network_error(addresses_status_code):
             return None
