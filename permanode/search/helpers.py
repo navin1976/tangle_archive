@@ -108,13 +108,7 @@ class Search:
         output={}
         db_thread=Thread(target=Search.grab_txs_for_address_from_db, args=(address_without_checksum, output))
         db_thread.start()
-        db_thread.join()
-        txs=output["db_result"]
-        # txs = Search.grab_txs_for_address_from_db(address_without_checksum)
-
-        for tx in txs:
-            all_db_transaction_objects.append(tx)
-
+        
         '''
         Check for latest balance associated with the address
 
@@ -149,9 +143,16 @@ class Search:
 
         thread_api_address.start()
         thread_api_address.join()
+        db_thread.join()
 
         addresses= result_1['api_output']
         addresses_status_code= result_1['api_status_code']
+        txs=output["db_result"]
+        # txs = Search.grab_txs_for_address_from_db(address_without_checksum)
+
+        for tx in txs:
+            all_db_transaction_objects.append(tx)
+
 
 
 
