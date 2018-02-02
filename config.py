@@ -1,3 +1,4 @@
+import ssl
 import logging
 from logstash_formatter import LogstashFormatterV1
 
@@ -6,7 +7,7 @@ class BaseConfig:
     cassandra configuration
     """
 
-    CASSANDRA_HOSTS = ['127.0.0.1']
+    CASSANDRA_HOSTS = ['cassandra']
     CASSANDRA_KEYSPACE = 'cqlengine'
 
     @staticmethod
@@ -16,12 +17,25 @@ class BaseConfig:
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
-    port = 9080
+    port = 8080
+
+
+class ProductionConfig(BaseConfig):
+    ssl_options = {
+                      'ca_certs': './certs/rootCa.crt',
+                      'ssl_version': ssl.PROTOCOL_TLSv1
+                  }
+    # Setting cassandra args for ssl_options
+    CASSANDRA_SETUP_KWARGS = {
+        'ssl_options': ssl_options
+    }
 
 
 config = {
-    'development': DevelopmentConfig
+    'development': DevelopmentConfig,
+    'production': ProductionConfig
 }
+
 
 class Logger:
 
