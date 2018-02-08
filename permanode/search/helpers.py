@@ -1,3 +1,7 @@
+from __future__ import print_function
+import sys
+import eventlet
+
 from iota import Bundle, Transaction, TryteString
 from permanode.models import AddressModel,\
     TransactionModel, BundleHashModel, TagModel,\
@@ -64,6 +68,10 @@ def has_network_error(status_code):
 
 def has_no_network_error(status_code):
     return status_code == 200
+
+
+def get_transactions_objects_async(trytes):
+    return Transaction.from_tryte_string(trytes).as_json_compatible()
 
 
 class Search:
@@ -191,6 +199,34 @@ class Search:
 
         return None
 
+    def construct_bundles_async(self, tryte_strings):
+        transaction_objects = []
+
+        """
+        Construct transaction objects async if number of trytes are greater than 4
+
+        """
+
+        pool = eventlet.GreenPool()
+        pile = eventlet.GreenPile(pool)
+
+        for tryte_string in tryte_strings:
+            pile.spawn(get_transactions_objects_async, tryte_string)
+
+        for tx in pile:
+            transaction_objects.append(tx)
+            print(tx, file=sys.stdout)
+        
+        return transaction_objects
+
+    def construct_bundles_sync(self, tryte_strings):
+        transaction_objects = []
+
+        for tryte_string in tryte_strings:
+            transaction_objects.append(Transaction.from_tryte_string(tryte_string).as_json_compatible())
+
+        return transaction_objects
+
     def get_txs_for_bundle_hash(self):
         bundles, bundles_status_code = self.api.find_transactions(
             bundles=[self.search_for]
@@ -224,10 +260,18 @@ class Search:
                     bundles['hashes']
                 )
 
-            bundle_inst = Bundle.from_tryte_strings(
-                transaction_trytes['trytes']
-            ).as_json_compatible()
-            hashes = [tx['hash_'] for tx in bundle_inst]
+            tryte_strings = transaction_trytes['trytes']
+
+            should_apply_async = len(tryte_strings) > 4
+
+            transaction_objects = []
+
+            if should_apply_async:
+                transaction_objects = self.construct_bundles_async(tryte_strings)
+            else:
+                transaction_objects = self.construct_bundles_sync(tryte_strings)
+
+            hashes = [tx['hash_'] for tx in transaction_objects]
 
             inclusion_states,\
                 inclusion_states_status_code = self.api.get_latest_inclusions(hashes)  # noqa: E501
@@ -236,7 +280,7 @@ class Search:
                 return None
 
             bundle_with_persistence = transform_with_persistence(
-                bundle_inst, inclusion_states['states']
+                transaction_objects, inclusion_states['states']
             )
 
             payload = {
