@@ -8,10 +8,10 @@ def fetch_associated_info(search_string):
     if not search_string or len(search_string) > 90:
         abort(400)
 
-    search_inst = Search(search_string)
+    search = Search(search_string)
 
     if len(search_string) <= 27:
-        payload = search_inst.get_txs_for_tag()
+        payload = search.get_txs_for_tag()
 
         if payload is None:
             abort(404)
@@ -19,7 +19,7 @@ def fetch_associated_info(search_string):
         return jsonify(payload)
 
     if len(search_string) == 90:
-        payload = search_inst.get_txs_for_address()
+        payload = search.address()
 
         if payload is None:
             abort(404)
@@ -27,7 +27,7 @@ def fetch_associated_info(search_string):
         return jsonify(payload)
 
     if len(search_string) == 81 and search_string.endswith('999'):
-        payload = search_inst.get_txs()
+        payload = search.get_txs()
 
         if payload is None:
             abort(404)
@@ -35,7 +35,7 @@ def fetch_associated_info(search_string):
         return jsonify(payload)
 
     if len(search_string) == 81 and not search_string.endswith('999'):
-        payload = search_inst.get_txs_for_bundle_hash_or_address()
+        payload = search.get_txs_for_bundle_hash_or_address()
 
         if payload is None:
             abort(404)

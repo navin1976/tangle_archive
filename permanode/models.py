@@ -1,44 +1,51 @@
 from cassandra.cqlengine import columns
 from permanode import db
-
+from cassandra.cqlengine.models import Model
+from cassandra.cqlengine.usertype import UserType
 
 class Base(db.Model):
     __abstract__ = True
     __keyspace__ = "permanode"
 
 
-class TransactionModel(Base):
+class TransactionObject(UserType):
+    hash = columns.Text()
+
+    def as_json(self):
+        return {
+            "hash": self.hash
+        }
+
+class Transaction(Base):
     __table_name__ = "transactions"
 
-    id = columns.Text(primary_key=True)
+    hash_ = columns.Text(primary_key=True)
     address = columns.Text()
     value = columns.BigInt()
     transaction_time = columns.Integer()
-    hash = columns.Text()
     signature_message_fragment = columns.Text()
     tag = columns.Text()
     tag_index = columns.BigInt()
     current_index = columns.Integer()
     last_index = columns.Integer()
-    bundle_hash = columns.Text()
+    bundle = columns.Text()
     trunk_transaction_hash = columns.Text()
     branch_transaction_hash = columns.Text()
-    min_weight_magnitude = columns.Integer()
     nonce = columns.Text()
+    min_weight_magnitude = columns.Integer()
 
     def as_json(self):
         return {
-            "id": self.id,
             "address": self.address,
             "value": self.value,
             "timestamp": self.transaction_time,
-            "hash": self.hash,
+            "hash": self.hash_,
             "signature_message_fragment": self.signature_message_fragment,
             "tag": self.tag,
             "tag_index": self.tag_index,
             "current_index": self.current_index,
             "last_index": self.last_index,
-            "bundle_hash": self.bundle_hash,
+            "bundle": self.bundle,
             "trunk_transaction_hash": self.trunk_transaction_hash,
             "branch_transaction_hash": self.branch_transaction_hash,
             "nonce": self.nonce,
@@ -46,80 +53,58 @@ class TransactionModel(Base):
             "persistence": True  # since all txs from db are confirmed
         }
 
+class Bundle(Base):
+    __table_name__ = 'bundles'
 
-class TransactionHashModel(Base):
-    __table_name__ = 'transaction_hash'
-
-    hash = columns.Text(primary_key=True)
-    id = columns.Text(primary_key=True)
+    bundle = columns.Text(primary_key=True, required=True)
+    transactions = columns.List(columns.UserDefinedType(TransactionObject))
 
     def as_json(self):
         return {
-            "id": self.id,
-            "hash": self.hash
+            "bundle": self.bundle,
+            "transactions": self.transactions
         }
 
 
-class BundleHashModel(Base):
-    __table_name__ = 'bundle_hash'
+class Tag(Base):
+    __table_name__ = 'tags'
 
-    bundle_hash = columns.Text(primary_key=True)
-    id = columns.Text(primary_key=True)
+
+    tag = columns.Text(primary_key=True, required=True)
+    transactions = columns.List(columns.UserDefinedType(TransactionObject))
 
     def as_json(self):
         return {
-            "id": self.id,
-            "bundle_hash": self.bundle_hash
+            "tag": self.tag,
+            "transactions": self.transactions
+
         }
 
 
-class TagModel(Base):
-    __table_name__ = 'tag'
+class Address(Base):
+    __table_name__ = 'addresses'
 
-    tag = columns.Text(primary_key=True)
-    id = columns.Text(primary_key=True)
+    address = columns.Text(primary_key=True, required=True)
+    transactions = columns.List(columns.UserDefinedType(TransactionObject))
+
+    @classmethod
+    def get(cls, address):
+        return Address.objects.get(address=address)
 
     def as_json(self):
         return {
-            "id": self.id,
-            "tag": self.tag
+            "address": self.address,
+            "transactions": self.transactions
         }
 
+class Approvee(Base):
+    __table_name__ = 'approvees'
 
-class AddressModel(Base):
-    __table_name__ = 'address'
-
-    address = columns.Text(primary_key=True)
-    id = columns.Text(primary_key=True)
-
-    def as_json(self):
-        return {
-            "id": self.id,
-            "address": self.address
-        }
-
-
-class BranchTransactionHashModel(Base):
-    __table_name__ = 'branch_transaction_hash'
-
-    branch = columns.Text(primary_key=True)
-    id = columns.Text(primary_key=True)
+    hash = columns.Text(primary_key=True, required=True)
+    approvees = columns.List(columns.UserDefinedType(TransactionObject))
 
     def as_json(self):
         return {
-            "id": self.id,
-            "branch": self.branch
-        }
-
-
-class TrunkTransactionHashModel(Base):
-    __table_name__ = 'trunk_transaction_hash'
-
-    trunk = columns.Text(primary_key=True)
-    id = columns.Text(primary_key=True)
-
-    def as_json(self):
-        return {
-            "id": self.id,
-            "trunk": self.trunk
+            "hash": self.hash,
+            "approvees": self.approvees
         }

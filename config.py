@@ -8,6 +8,7 @@ class BaseConfig:
 
     CASSANDRA_HOSTS = ['cassandra']
     CASSANDRA_KEYSPACE = 'cqlengine'
+    CASSANDRA_SETUP_KWARGS={'protocol_version': 3}
 
     @staticmethod
     def init_app(app):

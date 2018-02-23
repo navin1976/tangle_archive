@@ -1,72 +1,227 @@
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
 from cassandra.cqlengine.usertype import UserType
+from cassandra.cqlengine.query import LWTException
 
 KEYSPACE = 'permanode'
 
-
-class Transaction(Model):
-    __table_name__ = 'transactions'
+class Base(Model):
+    __abstract__ = True
     __keyspace__ = KEYSPACE
 
-    bucket = columns.Text(primary_key=True, partition_key=True, required=True)
-    hash = columns.Text(primary_key=True, required=True)
-    address = columns.Text(required=True)
-    value = columns.BigInt(required=True)
-    transaction_time = columns.Integer(required=True)
-    signature_message_fragment = columns.Text()
-    tag = columns.Text(required=True)
-    tag_index = columns.BigInt(required=True)
-    current_index = columns.Integer(required=True)
-    last_index = columns.Integer(required=True)
-    bundle = columns.Text(required=True)
-    trunk_transaction_hash = columns.Text(required=True)
-    branch_transaction_hash = columns.Text(required=True)
-    nonce = columns.Text(required=True)
-    min_weight_magnitude = columns.Integer(required=True)
+
+class TransactionAlreadyExistsException(Exception): pass
+
 
 class TransactionObject(UserType):
     hash = columns.Text()
-    bucket = columns.Text()
 
-class Bundle(Model):
+    def as_json(self):
+        return {
+            "hash": self.hash,
+        }
+
+class Transaction(Base):
+    __table_name__ = "transactions"
+
+    hash_ = columns.Text(primary_key=True)
+    address = columns.Text()
+    value = columns.BigInt()
+    transaction_time = columns.Integer()
+    signature_message_fragment = columns.Text()
+    tag = columns.Text()
+    tag_index = columns.BigInt()
+    current_index = columns.Integer()
+    last_index = columns.Integer()
+    bundle = columns.Text()
+    trunk_transaction_hash = columns.Text()
+    branch_transaction_hash = columns.Text()
+    nonce = columns.Text()
+    min_weight_magnitude = columns.Integer()
+
+    def as_json(self):
+        return {
+            "address": self.address,
+            "value": self.value,
+            "timestamp": self.transaction_time,
+            "hash": self.hash,
+            "signature_message_fragment": self.signature_message_fragment,
+            "tag": self.tag,
+            "tag_index": self.tag_index,
+            "current_index": self.current_index,
+            "last_index": self.last_index,
+            "bundle": self.bundle,
+            "trunk_transaction_hash": self.trunk_transaction_hash,
+            "branch_transaction_hash": self.branch_transaction_hash,
+            "nonce": self.nonce,
+            "min_weight_magnitude": self.min_weight_magnitude,
+            "persistence": True  # since all txs from db are confirmed
+        }
+
+    @classmethod
+    def get(cls, hash):
+        return Transaction.objects.get(hash=hash)
+
+    @classmethod
+    def create(cls, tx):
+        try:
+            return Transaction.if_not_exists().create(
+                hash_=tx.hash,
+                address=tx.address,
+                value=tx.value,
+                transaction_time=tx.timestamp,
+                signature_message_fragment=tx.signature_message_fragment,
+                tag=tx.tag,
+                tag_index=tx.tagIndex,
+                current_index=tx.current_index,
+                last_index=tx.last_index,
+                bundle=tx.bundle_hash,
+                trunk_transaction_hash=tx.trunk_transaction_hash,
+                branch_transaction_hash=tx.branch_transaction_hash,
+                nonce=tx.nonce,
+                min_weight_magnitude=tx.min_weight_magnitude
+            )
+
+        except LWTException as e:
+            raise TransactionAlreadyExistsException()
+
+
+class Bundle(Base):
     __table_name__ = 'bundles'
-    __keyspace__ = KEYSPACE
 
-    bucket = columns.Text(primary_key=True, partition_key=True, required=True)
     bundle = columns.Text(primary_key=True, required=True)
-    hashes = columns.List(columns.UserDefinedType(TransactionObject))
+    transactions = columns.List(columns.UserDefinedType(TransactionObject))
+
+    @classmethod
+    def create_or_update(cls, bundle, hash):
+        try:
+            return Bundle.if_not_exists().create(
+                bundle=bundle,
+                transactions=[
+                    TransactionObject(
+                        hash=hash
+                )]
+            )
+        except LWTException:
+            pass
+        try:
+            return Bundle.objects(bundle=bundle).update(
+                transactions__append=[
+                    TransactionObject(
+                        hash=hash
+                )]
+            )
+        except LWTException:
+            raise Exception('Could not update bundle.')
+
+    def as_json(self):
+        return {
+            "bundle": self.bundle,
+            "transactions": self.transactions
+        }
 
 
-class Tag(Model):
+class Tag(Base):
     __table_name__ = 'tags'
-    __keyspace__ = KEYSPACE
 
-    bucket = columns.Text(primary_key=True, partition_key=True, required=True)
+
     tag = columns.Text(primary_key=True, required=True)
-    hashes = columns.List(columns.UserDefinedType(TransactionObject))
+    transactions = columns.List(columns.UserDefinedType(TransactionObject))
 
-class TransactionHash(Model):
-    __table_name__ = 'transaction_hashes'
-    __keyspace__ = KEYSPACE
+    @classmethod
+    def create_or_update(cls, tag, hash):
+        try:
+            return Tag.if_not_exists().create(
+                tag=tag,
+                transactions=[
+                    TransactionObject(
+                        hash=hash
+                    )]
+            )
+        except LWTException:
+            pass
+        try:
+            return Tag.objects(tag=tag).update(
+                transactions__append=[
+                    TransactionObject(
+                        hash=hash
+                    )]
+            )
+        except LWTException:
+            raise Exception('Could not update tag.')
 
-    bucket = columns.Text(primary_key=True, partition_key=True, required=True)
-    hash = columns.Text(primary_key=True, required=True)
-    date = columns.Text(required=True)
+    def as_json(self):
+        return {
+            "tag": self.tag,
+            "transactions": self.transactions
 
-class Address(Model):
+        }
+
+
+class Address(Base):
     __table_name__ = 'addresses'
-    __keyspace__ = KEYSPACE
 
-    bucket = columns.Text(primary_key=True, partition_key=True, required=True)
     address = columns.Text(primary_key=True, required=True)
-    hashes = columns.List(columns.UserDefinedType(TransactionObject))
+    transactions = columns.List(columns.UserDefinedType(TransactionObject))
 
+    @classmethod
+    def create_or_update(cls, address, hash):
+        try:
+            return Address.if_not_exists().create(
+                address=address,
+                transactions=[
+                    TransactionObject(
+                        hash=hash
+                    )]
+            )
+        except LWTException:
+            pass
+        try:
+            return Address.objects(address=address).update(
+                transactions__append=[
+                    TransactionObject(
+                        hash=hash
+                    )]
+            )
+        except LWTException:
+            raise Exception('Could not update address.')
 
-class Approvee(Model):
+    def as_json(self):
+        return {
+            "address": self.address,
+            "transactions": self.transactions
+        }
+
+class Approvee(Base):
     __table_name__ = 'approvees'
-    __keyspace__ = KEYSPACE
 
-    bucket = columns.Text(primary_key=True, partition_key=True, required=True)
     hash = columns.Text(primary_key=True, required=True)
     approvees = columns.List(columns.UserDefinedType(TransactionObject))
+
+    @classmethod
+    def create_or_update(cls, reference, hash):
+        try:
+            return Approvee.if_not_exists().create(
+                hash=reference,
+                approvees=[
+                    TransactionObject(
+                        hash=hash
+                )]
+            )
+        except LWTException:
+            pass
+        try:
+            return Approvee.objects(hash=reference).update(
+                approvees__append=[
+                    TransactionObject(
+                        hash=hash
+                )]
+            )
+        except LWTException:
+            raise Exception('Could not update approvee.')
+
+    def as_json(self):
+        return {
+            "hash": self.hash,
+            "approvees": self.approvees
+        }

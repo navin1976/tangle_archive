@@ -1,10 +1,12 @@
+from __future__ import print_function
+import sys
 from iota import Bundle, Transaction, TryteString
-from permanode.models import AddressModel,\
-    TransactionModel, BundleHashModel, TagModel,\
-    TransactionHashModel, TrunkTransactionHashModel,\
-    BranchTransactionHashModel
+from permanode.models import Address,\
+    Transaction as TransactionModel, Bundle, Tag,\
+    Approvee,\
+    TransactionObject
 from permanode.shared.iota_api import IotaApi
-
+from constants import *
 
 def transform_with_persistence(all_txs, states):
     if not all_txs or not states or len(all_txs) != len(states):
@@ -65,25 +67,10 @@ def has_network_error(status_code):
 def has_no_network_error(status_code):
     return status_code == 200
 
-
 class Search:
     def __init__(self, search_for):
         self.search_for = search_for
         self.api = IotaApi()
-
-    @staticmethod
-    def grab_txs_for_address_from_db(address):
-        addresses_ref = AddressModel.objects.filter(address=address)
-        addresses_obj = [res.as_json() for res in addresses_ref]
-
-        if not addresses_obj:
-            return list()
-
-        txs = TransactionModel.objects.filter(
-            id__in=[addr['id'] for addr in addresses_obj]
-        )
-
-        return [res.as_json() for res in txs]
 
     @staticmethod
     def grab_txs_for_tag_from_db(tag):
@@ -99,23 +86,31 @@ class Search:
 
         return [res.as_json() for res in txs]
 
-    def get_txs_for_address(self):
+    def address(self):
         address_without_checksum = self.search_for[:-9] if len(
             self.search_for
         ) == 90 else self.search_for
 
-        all_db_transaction_objects = []
         balance = 0
 
-        txs = Search.grab_txs_for_address_from_db(address_without_checksum)
+        address = Address.objects.filter(address__in=[
+            'AWMIYMRXFUIPEFUIIEXKJJ9YFSPB9RLTIKHDMJCLJCVDXOSOKDRADCMOT9QIYVUMZPBDQVMDZWPRXYHGR',
+            'KPWCHICGJZXKE9GSUDXZYUAPLHAKAHYHDXNPHENTERYMMBQOPSQIDENXKLKCEYCPVTZQLEEJVYJZV9BWU'
+        ])
 
-        for tx in txs:
-            all_db_transaction_objects.append(tx)
+        print(address, file=sys.stderr)
 
-        '''
+        if not address:
+            return list()
+
+
+        historical_transactions = []
+
+
+        """
         Check for latest balance associated with the address
 
-        '''
+        """
 
         latest_balances, balance_status_code = self.api.get_balances(
             [address_without_checksum]
@@ -124,46 +119,48 @@ class Search:
         if has_network_error(balance_status_code):
             return None
         elif has_no_network_error(balance_status_code):
-            if latest_balances['balances']:
-                balance = latest_balances['balances'][0]
+            if latest_balances:
+                balance = latest_balances[0]
 
-        '''
-        Check for latest balance associated with the address
+        """
+        Query full node for recent transactions
 
-        '''
+        """
 
-        addresses, addresses_status_code = self.api.find_transactions(
+        recent_transactions, recent_transactions_status_code = self.api.find_transactions(
             addresses=[address_without_checksum]
         )
 
-        if has_network_error(addresses_status_code):
+        if has_network_error(recent_transactions_status_code):
             return None
-        elif has_no_network_error(addresses_status_code):
-            if not addresses['hashes']:
+        elif has_no_network_error(recent_transactions_status_code):
+            """
+            Return prematurely with historical transactions in case there are no recent transactions
+
+            """
+            if not recent_transactions:
                 payload = {
                     'type': 'address',
                     'payload': {
                         'balance': balance,
-                        'transactions': all_db_transaction_objects
+                        'transactions': historical_transactions
                     }
-                } if len(all_db_transaction_objects) > 0 else list()
+                } if len(historical_transactions) > 0 else list()
 
                 return payload
 
-            all_full_node_transaction_objects = []
+            recent_transactions = []
             transaction_trytes,\
-                transaction_trytes_status_code = self.api.get_trytes(
-                    addresses['hashes']
+                transaction_trytes_status_code = self.api.get_trytes(recent_transactions)
+
+            for tryte in transaction_trytes:
+                recent_transaction = Transaction.from_tryte_string(tryte)
+
+                recent_transactions.append(
+                    recent_transaction.as_json_compatible()
                 )
 
-            for tryte in transaction_trytes['trytes']:
-                transaction_inst = Transaction.from_tryte_string(tryte)
-
-                all_full_node_transaction_objects.append(
-                    transaction_inst.as_json_compatible()
-                )
-
-            hashes = [tx['hash_'] for tx in all_full_node_transaction_objects]
+            hashes = [tx['hash_'] for tx in recent_transactions]
 
             inclusion_states,\
                 inclusion_states_status_code = self.api.get_latest_inclusions(
@@ -173,18 +170,20 @@ class Search:
             if has_network_error(inclusion_states_status_code):
                 return None
 
-            txs_with_persistence = transform_with_persistence(
-                all_full_node_transaction_objects, inclusion_states['states']
+            recent_transactions_with_persistence = transform_with_persistence(
+                recent_transactions, inclusion_states
             )
+
+            all_transactions = recent_transactions_with_persistence + historical_transactions
 
             payload = {
                 'type': 'address',
                 'payload': {
                     'balance': balance,
-                    'transactions': txs_with_persistence + all_db_transaction_objects  # noqa: E501
+                    'transactions': all_transactions  # noqa: E501
                 }
             } if len(
-                txs_with_persistence + all_db_transaction_objects
+                all_transactions
             ) > 0 else list()
 
             return payload
@@ -249,7 +248,7 @@ class Search:
         return None
 
     def get_txs_for_bundle_hash_or_address(self):
-        addresses_payload = self.get_txs_for_address()
+        addresses_payload = self.address()
 
         if not isinstance(addresses_payload, dict) and\
                 addresses_payload is None:
